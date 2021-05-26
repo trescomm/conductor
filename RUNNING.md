@@ -12,7 +12,7 @@
 
 ## Run server
 * After the build completes, run the following from `conductor/server` folder:
-> java -DCONDUCTOR_CONFIG_FILE=<path to local server config> -jar conductor-server-3.1.0-SNAPSHOT-boot.jar
+> java -DCONDUCTOR_CONFIG_FILE="path to local server config" -jar conductor-server-3.1.0-SNAPSHOT-boot.jar
 * Point your browser to http://localhost:8080
 
 ## Run UI
