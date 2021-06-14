@@ -19,6 +19,10 @@ dependencies {
 
     implementation "com.amazonaws:aws-java-sdk-s3:${revAwsSdk}"
     implementation "com.amazonaws:aws-java-sdk-sqs:${revAwsSdk}"
+    implementation "com.amazonaws:aws-java-sdk-lambda:${revAwsSdk}"
+    implementation "com.amazonaws:aws-java-sdk-sts:${revAwsSdk}"
+    implementation 'software.amazon.awssdk:arns:2.10.34'
+    implementation 'software.amazon.awssdk:secretsmanager:2.10.34'
 
     implementation "org.apache.commons:commons-lang3:"
 

@@ -86,6 +86,12 @@ public interface QueueDAO {
 
     /**
      * @param queueName Name of the queue
+     * @param messageId Message id
+     */
+    Message get(String queueName, String messageId);
+
+    /**
+     * @param queueName Name of the queue
      * @return size of the queue
      */
     int getSize(String queueName);

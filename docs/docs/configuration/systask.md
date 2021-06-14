@@ -862,3 +862,72 @@ The parameters for this task are the variable names with their respective values
 ```
 
 Later in that workflow, the variable can be referenced by `"${workflow.variables.stage}"`
+
+## AWS Lambda Task
+
+This task can be used to invoke [Amazon Web Services (AWS) Lambda functions](https://aws.amazon.com/lambda/). You will need to have created and configured the functions ahead of this task calling them. More details on on how to do that are available in the [AWS lambda documentation page](https://docs.aws.amazon.com/lambda/latest/dg/getting-started-create-function.html).
+
+This AWS Lambda system task can invoke an AWS Lambda Function synchronously or asynchronously. When its invoked synchronously, the system task will wait until it gets a response back from the AWS Lambda function. 
+
+### Asynchronous Invoication
+If you plan to [invoke asynchronously](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async.html), you need to [configure the destinations of the function](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async.html#invocation-async-destinations) to the SQS queues that Conductor has created. The queues created by Conductor will have the following naming convention. 
+1. The SQS queue to which your AWS lambda function sends an event in the case of **success** -> <prefix>_sqs_notify_test_COMPLETED
+2. The SQS queue to which your AWS lambda function sends an event in the case of **failure** -> <prefix>_sqs_notify_test_FAILED
+
+The <prefix> is determined by the value you set the parameter `conductor.event-queues.sqs.listenerQueuePrefix`. E.g. if that value is setv to be `cond_queue` then the success queue will be named `condqueue_sqs_notify_test_COMPLETED`
+
+Next, the input parameter `asyncComplete` of this system task should be set to `true` to let Conductor know that invocation needs to be done asynchronously. 
+
+With these settings in place, when the AWS Lambda system task invokes the function asynchronously, it waits for a confirmation from the AWS Lambda Service in the form of a 202 HTTP response code that denotes that the function invocation was successful. Later, once the function completes, AWS Lambda will write the results to the queues configured earlier (there are separate queues for success and failure), and the system task will pick it up and resume at that point.
+
+### Cross Account Invocation
+
+In addition to calling AWS Lambda functions in the same account that Conductor is configured to use, this system task can also be used to invoke functions under another AWS accountt. This is acheived by providing, in the task configuration, [an AWS IAM role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html) that Conductor should assume before invoking the AWS Lambda function. This [role should be configured](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user.html) by the other account to [provide AWS lambda invocation privileges](https://docs.amazonaws.cn/en_us/lambda/latest/dg/access-control-identity-based.html) to the AWS account under which Conductor is running. More details are in the [AWS account setup](aws-account/) documentation.
+
+
+	If you will be invoking AWS Lambda functions across multiple external accounts, a highly recommended, but optional, configuration you can set is to have Conductor add in an externalID provided by you in its call to assume the role specified. This prevents the confused deputy problem (https://en.wikipedia.org/wiki/Confused_deputy_problem) that can arise in such situations. 
+
+### Cross Region Invocation
+When Conductor is running, it uses the [AWS specific environment variables that are set](/aws-account) to determine which AWS region is default and will send calls to the AWS API endpoints for that region. If you need to invoke an AWS lambda function in a different region, ensure that you provide the full ARN of the function in the configuration.
+
+If you are doing a cross region invocation in an asynchronous manner, you also need to ensure that Conductor has created SQS queues in that region since the AWS lambda service in a region cannot write the result of an asyncchronous invocation to SQS queues in another region. To do this, you can specify in the [server settings](../server/) the regions where you will be having AWS lambda functions by setting the `conductor.event-queues.sqs.regions` parameter. 
+
+
+**Parameters:**
+
+|name|type|description|
+|---|---|---|
+|lambda_function_name|String|The name of the AWS Lambda function to invoke. Specifying the ARN of the function is recommended, and required if this function is under another AWS account|
+|externalIdSecretName|String|**optional** A name to reference the externalID you are providing|
+|externalIdSecretKey|String|**optional** The externalID you are providing|
+|assumeRole|String|**optional** The full ARN of the role to be assumed when invoking AWS Lambda|
+|function input parameters|Any|**optional** If the function taken in parameters, add them one by one to be passed during invocation|
+
+**Outputs:**
+
+|name|type|description|
+|---|---|---|
+|response|Any|**Synchronous invocation:** The response value from the function, or error.  **Asynchronous invocation:** 202 response code confirming the AWS Lambda service has scheduled the invocation, or error |
+
+**Example**
+```json
+{
+      "type": "AWS_LAMBDA",
+      "name": "sample_aws_lambda",
+      "taskReferenceName": "sample_aws_lambda_task",
+      "asyncComplete": true,
+      "inputParameters": {
+        "lambda_function_name": "<name of the lambda function to invoke>",
+        "externalIdSecretName": "${workflow.input.secretName}",
+        "externalIdSecretKey": "${workflow.input.secretKey}",
+        "assumeRole": "arn:aws:iam::<account-id>:role/<role-name>",
+        "<function input parameter 1>": "foo",
+        "<function input parameter 2>": "${workflow.input.bar}"        
+      },
+      "outputParameters": {
+    "response": "${sample_aws_lambda_task.output.response.body.response}"
+  },
+      
+}
+```
+

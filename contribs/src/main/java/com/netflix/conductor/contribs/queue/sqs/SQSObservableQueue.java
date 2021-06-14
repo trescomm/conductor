@@ -12,49 +12,24 @@
  */
 package com.netflix.conductor.contribs.queue.sqs;
 
-import com.amazonaws.auth.policy.Action;
-import com.amazonaws.auth.policy.Policy;
-import com.amazonaws.auth.policy.Principal;
-import com.amazonaws.auth.policy.Resource;
-import com.amazonaws.auth.policy.Statement;
+import com.amazonaws.auth.policy.*;
 import com.amazonaws.auth.policy.Statement.Effect;
 import com.amazonaws.auth.policy.actions.SQSActions;
-import com.amazonaws.services.sqs.AmazonSQSClient;
-import com.amazonaws.services.sqs.model.BatchResultErrorEntry;
-import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
-import com.amazonaws.services.sqs.model.CreateQueueRequest;
-import com.amazonaws.services.sqs.model.CreateQueueResult;
-import com.amazonaws.services.sqs.model.DeleteMessageBatchRequest;
-import com.amazonaws.services.sqs.model.DeleteMessageBatchRequestEntry;
-import com.amazonaws.services.sqs.model.DeleteMessageBatchResult;
-import com.amazonaws.services.sqs.model.GetQueueAttributesResult;
-import com.amazonaws.services.sqs.model.ListQueuesRequest;
-import com.amazonaws.services.sqs.model.ListQueuesResult;
-import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
-import com.amazonaws.services.sqs.model.ReceiveMessageResult;
-import com.amazonaws.services.sqs.model.SendMessageBatchRequest;
-import com.amazonaws.services.sqs.model.SendMessageBatchRequestEntry;
-import com.amazonaws.services.sqs.model.SendMessageBatchResult;
-import com.amazonaws.services.sqs.model.SetQueueAttributesResult;
+import com.amazonaws.services.sqs.AmazonSQS;
+import com.amazonaws.services.sqs.model.*;
 import com.google.common.annotations.VisibleForTesting;
-import com.netflix.conductor.core.LifecycleAwareComponent;
 import com.netflix.conductor.core.events.queue.Message;
 import com.netflix.conductor.core.events.queue.ObservableQueue;
 import com.netflix.conductor.metrics.Monitors;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Observable.OnSubscribe;
 import rx.Scheduler;
+
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class SQSObservableQueue implements ObservableQueue {
 
@@ -64,13 +39,13 @@ public class SQSObservableQueue implements ObservableQueue {
     private final String queueName;
     private final int visibilityTimeoutInSeconds;
     private final int batchSize;
-    private final AmazonSQSClient client;
+    private final AmazonSQS client;
     private final long pollTimeInMS;
     private final String queueURL;
     private final Scheduler scheduler;
     private volatile boolean running;
 
-    private SQSObservableQueue(String queueName, AmazonSQSClient client, int visibilityTimeoutInSeconds, int batchSize,
+    private SQSObservableQueue(String queueName, AmazonSQS client, int visibilityTimeoutInSeconds, int batchSize,
         long pollTimeInMS, List<String> accountsToAuthorize, Scheduler scheduler) {
         this.queueName = queueName;
         this.client = client;
@@ -168,7 +143,7 @@ public class SQSObservableQueue implements ObservableQueue {
         private int visibilityTimeout = 30;    //seconds
         private int batchSize = 5;
         private long pollTimeInMS = 100;
-        private AmazonSQSClient client;
+        private AmazonSQS client;
         private List<String> accountsToAuthorize = new LinkedList<>();
         private Scheduler scheduler;
 
@@ -191,7 +166,7 @@ public class SQSObservableQueue implements ObservableQueue {
             return this;
         }
 
-        public Builder withClient(AmazonSQSClient client) {
+        public Builder withClient(AmazonSQS client) {
             this.client = client;
             return this;
         }
@@ -269,7 +244,9 @@ public class SQSObservableQueue implements ObservableQueue {
     }
 
     private List<String> listQueues(String queueName) {
+        LOGGER.info("listQueues: {}", queueName);
         ListQueuesRequest listQueuesRequest = new ListQueuesRequest().withQueueNamePrefix(queueName);
+        LOGGER.info("listQueues: {}-client: {}", queueName, client);
         ListQueuesResult resultList = client.listQueues(listQueuesRequest);
         return resultList.getQueueUrls().stream()
             .filter(queueUrl -> queueUrl.contains(queueName))
