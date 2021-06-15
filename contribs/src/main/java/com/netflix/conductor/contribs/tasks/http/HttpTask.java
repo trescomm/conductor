@@ -45,7 +45,7 @@ import static com.netflix.conductor.common.metadata.tasks.TaskType.TASK_TYPE_HTT
 /**
  * Task that enables calling another HTTP endpoint as part of its execution
  */
-@Component(TASK_TYPE_HTTP)
+//@Component(TASK_TYPE_HTTP)
 public class HttpTask extends WorkflowSystemTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpTask.class);
@@ -234,7 +234,7 @@ public class HttpTask extends WorkflowSystemTask {
         private HttpMethod method;    //PUT, POST, GET, DELETE, OPTIONS, HEAD
         private String vipAddress;
         private String appName;
-        private Map<String, Object> headers = new HashMap<>();
+        Map<String, Object> headers = new HashMap<>();
         private String uri;
         private Object body;
         private String accept = MediaType.APPLICATION_JSON_VALUE;
@@ -370,4 +370,5 @@ public class HttpTask extends WorkflowSystemTask {
             this.readTimeOut = readTimeOut;
         }
     }
+
 }
