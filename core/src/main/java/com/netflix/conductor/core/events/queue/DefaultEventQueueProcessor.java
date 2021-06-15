@@ -12,9 +12,8 @@
  */
 package com.netflix.conductor.core.events.queue;
 
-import static com.netflix.conductor.common.metadata.tasks.TaskType.TASK_TYPE_WAIT;
-
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,33 +23,32 @@ import com.netflix.conductor.common.run.Workflow;
 import com.netflix.conductor.core.exception.ApplicationException;
 import com.netflix.conductor.core.exception.ApplicationException.Code;
 import com.netflix.conductor.service.ExecutionService;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import java.util.*;
+
+import static com.netflix.conductor.common.metadata.tasks.TaskType.TASK_TYPE_WAIT;
+
 /**
  * Monitors and processes messages on the default event queues that Conductor listens on.
  * <p>
  * The default event queue type is controlled using the property: <code>conductor.default-event-queue.type</code>
+ * This queue handler does not use event handlers
  */
 @Component
 @ConditionalOnProperty(name = "conductor.default-event-queue-processor.enabled", havingValue = "true", matchIfMissing = true)
 public class DefaultEventQueueProcessor {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultEventQueueProcessor.class);
-    private final Map<Status, ObservableQueue> queues;
-    private final ExecutionService executionService;
-    private static final TypeReference<Map<String, Object>> _mapType = new TypeReference<Map<String, Object>>() {
+    protected static final Logger LOGGER = LoggerFactory.getLogger(DefaultEventQueueProcessor.class);
+    protected final Map<Status, ObservableQueue> queues;
+    protected final ExecutionService executionService;
+    protected static final TypeReference<Map<String, Object>> _mapType = new TypeReference<Map<String, Object>>() {
     };
-    private final ObjectMapper objectMapper;
+    protected final ObjectMapper objectMapper;
 
     public DefaultEventQueueProcessor(Map<Status, ObservableQueue> queues, ExecutionService executionService,
         ObjectMapper objectMapper) {
@@ -66,64 +64,8 @@ public class DefaultEventQueueProcessor {
         queue.observe().subscribe((Message msg) -> {
 
             try {
-                LOGGER.debug("Got message {}", msg.getPayload());
-                String payload = msg.getPayload();
-                JsonNode payloadJSON = objectMapper.readTree(payload);
-                String externalId = getValue("externalId", payloadJSON);
-                if (externalId == null || "".equals(externalId)) {
-                    LOGGER.error("No external Id found in the payload {}", payload);
-                    queue.ack(Collections.singletonList(msg));
-                    return;
-                }
 
-                JsonNode json = objectMapper.readTree(externalId);
-                String workflowId = getValue("workflowId", json);
-                String taskRefName = getValue("taskRefName", json);
-                String taskId = getValue("taskId", json);
-                if (workflowId == null || "".equals(workflowId)) {
-                    //This is a bad message, we cannot process it
-                    LOGGER.error("No workflow id found in the message. {}", payload);
-                    queue.ack(Collections.singletonList(msg));
-                    return;
-                }
-                Workflow workflow = executionService.getExecutionStatus(workflowId, true);
-                Optional<Task> taskOptional;
-                if (StringUtils.isNotEmpty(taskId)) {
-                    taskOptional = workflow.getTasks().stream()
-                        .filter(task -> !task.getStatus().isTerminal() && task.getTaskId().equals(taskId)).findFirst();
-                } else if (StringUtils.isEmpty(taskRefName)) {
-                    LOGGER.error(
-                        "No taskRefName found in the message. If there is only one WAIT task, will mark it as completed. {}",
-                        payload);
-                    taskOptional = workflow.getTasks().stream()
-                        .filter(task -> !task.getStatus().isTerminal()
-                            && task.getTaskType().equals(TASK_TYPE_WAIT)).findFirst();
-                } else {
-                    taskOptional = workflow.getTasks().stream().filter(
-                        task -> !task.getStatus().isTerminal() && task.getReferenceTaskName().equals(taskRefName))
-                        .findFirst();
-                }
-
-                if (!taskOptional.isPresent()) {
-                    LOGGER.error(
-                        "No matching tasks found to be marked as completed for workflow {}, taskRefName {}, taskId {}",
-                        workflowId, taskRefName, taskId);
-                    queue.ack(Collections.singletonList(msg));
-                    return;
-                }
-
-                Task task = taskOptional.get();
-                task.setStatus(status);
-                task.getOutputData().putAll(objectMapper.convertValue(payloadJSON, _mapType));
-                executionService.updateTask(task);
-
-                List<String> failures = queue.ack(Collections.singletonList(msg));
-                if (!failures.isEmpty()) {
-                    LOGGER.error("Not able to ack the messages {}", failures.toString());
-                }
-            } catch (JsonParseException e) {
-                LOGGER.error("Bad message? : {} ", msg, e);
-                queue.ack(Collections.singletonList(msg));
+                process(status, queue, msg);
 
             } catch (ApplicationException e) {
                 if (e.getCode().equals(Code.NOT_FOUND)) {
@@ -135,7 +77,72 @@ public class DefaultEventQueueProcessor {
                 LOGGER.error("Error processing message: {}", msg, e);
             }
         }, (Throwable t) -> LOGGER.error(t.getMessage(), t));
+
         LOGGER.info("QueueListener::STARTED...listening for " + queue.getName());
+    }
+
+    protected void process(Status status, ObservableQueue queue, Message msg) {
+        LOGGER.info("Got message {}", msg.getPayload());
+
+        try {
+            String payload = msg.getPayload();
+            JsonNode payloadJSON = objectMapper.readTree(payload);
+            String externalId = getValue("externalId", payloadJSON);
+            if (externalId == null || "".equals(externalId)) {
+                LOGGER.error("No external Id found in the payload {}", payload);
+                queue.ack(Collections.singletonList(msg));
+                return;
+            }
+
+            JsonNode json = objectMapper.readTree(externalId);
+            String workflowId = getValue("workflowId", json);
+            String taskRefName = getValue("taskRefName", json);
+            String taskId = getValue("taskId", json);
+            if (workflowId == null || "".equals(workflowId)) {
+                //This is a bad message, we cannot process it
+                LOGGER.error("No workflow id found in the message. {}", payload);
+                queue.ack(Collections.singletonList(msg));
+                return;
+            }
+            Workflow workflow = executionService.getExecutionStatus(workflowId, true);
+            Optional<Task> taskOptional;
+            if (StringUtils.isNotEmpty(taskId)) {
+                taskOptional = workflow.getTasks().stream()
+                        .filter(task -> !task.getStatus().isTerminal() && task.getTaskId().equals(taskId)).findFirst();
+            } else if (StringUtils.isEmpty(taskRefName)) {
+                LOGGER.error(
+                        "No taskRefName found in the message. If there is only one WAIT task, will mark it as completed. {}",
+                        payload);
+                taskOptional = workflow.getTasks().stream()
+                        .filter(task -> !task.getStatus().isTerminal()
+                                && task.getTaskType().equals(TASK_TYPE_WAIT)).findFirst();
+            } else {
+                taskOptional = workflow.getTasks().stream().filter(
+                        task -> !task.getStatus().isTerminal() && task.getReferenceTaskName().equals(taskRefName))
+                        .findFirst();
+            }
+
+            if (!taskOptional.isPresent()) {
+                LOGGER.error(
+                        "No matching tasks found to be marked as completed for workflow {}, taskRefName {}, taskId {}",
+                        workflowId, taskRefName, taskId);
+                queue.ack(Collections.singletonList(msg));
+                return;
+            }
+
+            Task task = taskOptional.get();
+            task.setStatus(status);
+            task.getOutputData().putAll(objectMapper.convertValue(payloadJSON, _mapType));
+            executionService.updateTask(task);
+
+            List<String> failures = queue.ack(Collections.singletonList(msg));
+            if (!failures.isEmpty()) {
+                LOGGER.error("Not able to ack the messages {}", failures.toString());
+            }
+        }catch(JsonProcessingException jpe) {
+            LOGGER.debug("Bad message? " + msg.getPayload());
+            throw new RuntimeException(jpe);
+        }
     }
 
     private String getValue(String fieldName, JsonNode json) {

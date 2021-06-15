@@ -98,6 +98,14 @@ workflow.elasticsearch.url=localhost:9300
 # Name of the elasticsearch cluster
 workflow.elasticsearch.index.name=conductor
 
+# Regions where conductor will create SQS queues
+conductor.event-queues.sqs.regions=us-west-2,us-east-1,us-west-1,us-east-1
+
+# The prefix to use for the SQS queues Conductor creates
+# Conductor will create two queues per region with the name format <prefix>_sqs_notify_test_FAILED & <prefix_sqs_notify_test_COMPLETED
+# If this parameter is not set, the default "conductor" is used
+conductor.event-queues.sqs.listenerQueuePrefix=conductor
+
 # Additional modules (optional)
 conductor.additional.modules=class_extending_com.google.inject.AbstractModule
 

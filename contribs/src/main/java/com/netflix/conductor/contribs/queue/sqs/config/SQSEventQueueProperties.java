@@ -14,6 +14,8 @@ package com.netflix.conductor.contribs.queue.sqs.config;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.convert.DurationUnit;
 
@@ -45,6 +47,13 @@ public class SQSEventQueueProperties {
      * The AWS account Ids authorized to send messages to the queues
      */
     private String authorizedAccounts = "";
+
+    /**
+     * The AWS regions for which the queues will be created and listen on.
+     * When not set, Conductor creates queues in the same/default region conductor runs on.
+     * Provide a list of comma separated region to create queues
+     */
+    private List<String> regions;
 
     public int getBatchSize() {
         return batchSize;
@@ -85,4 +94,14 @@ public class SQSEventQueueProperties {
     public void setAuthorizedAccounts(String authorizedAccounts) {
         this.authorizedAccounts = authorizedAccounts;
     }
+
+    public List<String> getRegions() {
+        return regions;
+    }
+
+    public void setRegions(List<String> regions) {
+        this.regions = regions;
+    }
+
+
 }
