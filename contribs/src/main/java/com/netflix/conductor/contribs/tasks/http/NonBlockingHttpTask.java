@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.conductor.common.metadata.tasks.Task;
 import com.netflix.conductor.common.metadata.tasks.Task.Status;
+import com.netflix.conductor.common.metadata.tasks.TaskResult;
 import com.netflix.conductor.common.run.Workflow;
 import com.netflix.conductor.core.execution.WorkflowExecutor;
 import com.netflix.conductor.core.execution.tasks.WorkflowSystemTask;
@@ -69,6 +70,7 @@ public class NonBlockingHttpTask extends WorkflowSystemTask {
     public NonBlockingHttpTask(RestTemplateProvider restTemplateProvider,
                                ObjectMapper objectMapper) {
         this(TASK_TYPE_HTTP, restTemplateProvider, objectMapper);
+
     }
 
     public NonBlockingHttpTask(String name,
@@ -108,7 +110,8 @@ public class NonBlockingHttpTask extends WorkflowSystemTask {
 
         try {
 
-            asyncHttpCall(input, task);
+            //asyncHttpCall(input, task, executor);
+            asyncHttpCall2(input, task);
 
         } catch (Exception e) {
             LOGGER.error("Failed to invoke {} task: {} - uri: {}, vipAddress: {} in workflow: {}", getTaskType(), task.getTaskId(),
@@ -120,7 +123,7 @@ public class NonBlockingHttpTask extends WorkflowSystemTask {
     }
 
 
-    protected void asyncHttpCall(Input input, Task task) throws Exception {
+    protected void asyncHttpCall(Input input, Task task, WorkflowExecutor executor) throws Exception {
 
 
         WebClient.RequestBodySpec client = WebClient
@@ -137,6 +140,63 @@ public class NonBlockingHttpTask extends WorkflowSystemTask {
             cr = client.exchange();
         }
 
+        cr.subscribe(clientResponse -> {
+            HttpResponse response = new HttpResponse();
+            response.headers = clientResponse.headers().asHttpHeaders();
+            response.reasonPhrase = clientResponse.statusCode().getReasonPhrase();
+            response.statusCode = clientResponse.rawStatusCode();
+            Mono<String> bodyMono = clientResponse.bodyToMono(String.class);
+            LOGGER.debug("Response: {}, task:{}", response.statusCode, task.getTaskId());
+
+            if (!clientResponse.statusCode().isError()) {
+                if (isAsyncComplete(task)) {
+                    task.setStatus(Status.IN_PROGRESS);
+                } else {
+                    task.setStatus(Status.COMPLETED);
+                }
+            } else {
+                task.setStatus(Status.FAILED);
+            }
+
+            bodyMono.subscribe(responseBody -> {
+                response.body = extractBody(responseBody);
+
+                if (!clientResponse.statusCode().isError()) {
+                    task.getOutputData().put("response", response.asMap());
+                }
+                if (response.body != null && clientResponse.statusCode().isError()) {
+                    task.setReasonForIncompletion(response.body.toString());
+                } else {
+                    task.setReasonForIncompletion("No response from the remote service");
+                }
+                LOGGER.info("Updating task with status {} and result {}", task.getStatus(), task.getOutputData().keySet());
+                executor.updateTask(new TaskResult(task));
+            });
+
+        });
+
+        task.setStatus(Status.IN_PROGRESS);
+    }
+
+    protected void asyncHttpCall2(Input input, Task task) throws Exception {
+
+
+        WebClient.RequestBodySpec client = WebClient
+                .create(input.getUri())
+                .method(input.getMethod())
+                .accept(MediaType.valueOf(input.getAccept()))
+                .contentType(MediaType.valueOf(input.getContentType()));
+
+        input.headers.forEach((key, value) -> client.header(key, value.toString()));
+        Mono<ClientResponse> cr = null;
+        if (input.getBody() != null) {
+            cr = client.bodyValue(input.getBody()).exchange();
+        } else {
+            cr = client.exchange();
+        }
+
+
+
         ClientResponse clientResponse = cr.block();
         HttpResponse response = new HttpResponse();
         response.headers = clientResponse.headers().asHttpHeaders();
@@ -144,7 +204,6 @@ public class NonBlockingHttpTask extends WorkflowSystemTask {
         response.statusCode = clientResponse.rawStatusCode();
         Mono<String> bodyMono = clientResponse.bodyToMono(String.class);
 
-        System.out.println("response  " + response);
         LOGGER.debug("Response: {}, task:{}", response.statusCode, task.getTaskId());
 
         if (!clientResponse.statusCode().isError()) {
@@ -202,7 +261,7 @@ public class NonBlockingHttpTask extends WorkflowSystemTask {
 
     @Override
     public boolean isAsync() {
-        return true;
+        return false;
     }
 
 }
