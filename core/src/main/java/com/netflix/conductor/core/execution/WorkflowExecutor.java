@@ -1433,7 +1433,7 @@ public class WorkflowExecutor {
                     break;
             }
 
-            if (!task.getStatus().isTerminal()) {
+            if (!task.getStatus().isTerminal() && task.getCallbackAfterSeconds() == 0) {
                 task.setCallbackAfterSeconds(callbackTime);
             }
 
