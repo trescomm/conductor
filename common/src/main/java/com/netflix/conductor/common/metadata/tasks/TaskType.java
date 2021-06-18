@@ -33,6 +33,7 @@ public enum TaskType {
     USER_DEFINED,
     HTTP,
     LAMBDA,
+    AWS_LAMBDA,
     EXCLUSIVE_JOIN,
     TERMINATE,
     KAFKA_PUBLISH,
@@ -55,6 +56,7 @@ public enum TaskType {
     public static final String TASK_TYPE_SIMPLE = "SIMPLE";
     public static final String TASK_TYPE_HTTP = "HTTP";
     public static final String TASK_TYPE_LAMBDA = "LAMBDA";
+    public static final String TASK_TYPE_AWS_LAMBDA = "AWS_LAMBDA";
     public static final String TASK_TYPE_EXCLUSIVE_JOIN = "EXCLUSIVE_JOIN";
     public static final String TASK_TYPE_TERMINATE = "TERMINATE";
     public static final String TASK_TYPE_KAFKA_PUBLISH = "KAFKA_PUBLISH";

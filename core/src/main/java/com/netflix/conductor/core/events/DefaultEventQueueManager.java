@@ -84,7 +84,7 @@ public class DefaultEventQueueManager extends LifecycleAwareComponent implements
         Map<String, Map<String, Long>> queues = new HashMap<>();
         eventToQueueMap.forEach((key, value) -> {
             Map<String, Long> size = new HashMap<>();
-            size.put(value.getName(), value.size());
+            size.put(value.getURI(), value.size());
             queues.put(key, size);
         });
         return queues;

@@ -110,6 +110,15 @@ public class DynoQueueDAO implements QueueDAO {
     }
 
     @Override
+    public com.netflix.conductor.core.events.queue.Message get(String queueName, String messageId) {
+        Message msg = queues.get(queueName).get(messageId);
+        if(msg == null) {
+            return null;
+        }
+        return new com.netflix.conductor.core.events.queue.Message(msg.getId(), msg.getPayload(), null);
+    }
+
+    @Override
     public int getSize(String queueName) {
         return (int) queues.get(queueName).size();
     }

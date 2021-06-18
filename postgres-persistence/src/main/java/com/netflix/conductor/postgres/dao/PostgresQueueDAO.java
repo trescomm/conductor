@@ -254,6 +254,11 @@ public class PostgresQueueDAO extends PostgresBaseDAO implements QueueDAO {
             .addParameter(offsetTimeInSecond).addParameter(queueName).addParameter(messageId).executeUpdate() == 1);
     }
 
+    @Override
+    public Message get(String queueName, String messageId) {
+        return null;
+    }
+
     private boolean existsMessage(Connection connection, String queueName, String messageId) {
         final String EXISTS_MESSAGE = "SELECT EXISTS(SELECT 1 FROM queue_message WHERE queue_name = ? AND message_id = ?) FOR SHARE";
         return query(connection, EXISTS_MESSAGE, q -> q.addParameter(queueName).addParameter(messageId).exists());
