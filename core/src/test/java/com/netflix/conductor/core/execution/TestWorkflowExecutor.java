@@ -1433,6 +1433,42 @@ public class TestWorkflowExecutor {
     }
 
     @Test
+    public void testExecuteWaitSystemTask_WithResumeAfterSeconds() {
+        String workflowId = "workflow-id";
+
+        Wait wait = new Wait();
+
+        String task1Id = IDGenerator.generate();
+        Task task1 = new Task();
+        task1.setTaskType(TaskType.WAIT.name());
+        task1.setReferenceTaskName("waitTask");
+        task1.setWorkflowInstanceId(workflowId);
+        task1.setScheduledTime(System.currentTimeMillis());
+        task1.setTaskId(task1Id);
+        task1.setStatus(Status.SCHEDULED);
+        Map<String, Object> inputData = new HashMap<>();
+        inputData.put(Wait.RESUME_AFTER_WAIT_SECONDS_PARAM, 20);
+        task1.setInputData(inputData);
+
+        Workflow workflow = new Workflow();
+        workflow.setWorkflowId(workflowId);
+        workflow.setStatus(Workflow.WorkflowStatus.RUNNING);
+
+        when(executionDAOFacade.getTaskById(anyString())).thenReturn(task1);
+        when(executionDAOFacade.getWorkflowById(anyString(), anyBoolean())).thenReturn(workflow);
+
+        workflowExecutor.executeSystemTask(wait, task1Id, 30);
+
+        assertEquals(Status.IN_PROGRESS, task1.getStatus());
+        assertEquals(20, task1.getCallbackAfterSeconds());
+
+
+        task1.setStartTime(System.currentTimeMillis() - (1_000 * 20));
+        workflowExecutor.executeSystemTask(wait, task1Id, 30);
+        assertEquals(Status.COMPLETED, task1.getStatus());
+    }
+
+    @Test
     public void testExecuteSystemTaskWithAsyncComplete() {
         String workflowId = "workflow-id";
 
