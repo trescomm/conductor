@@ -261,7 +261,7 @@ public class NonBlockingHttpTask extends WorkflowSystemTask {
 
     @Override
     public boolean isAsync() {
-        return false;
+        return true;
     }
 
 }
