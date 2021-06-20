@@ -110,8 +110,8 @@ public class NonBlockingHttpTask extends WorkflowSystemTask {
 
         try {
 
-            //asyncHttpCall(input, task, executor);
-            asyncHttpCall2(input, task);
+            asyncHttpCall(input, task, executor);
+            //asyncHttpCall2(input, task);
 
         } catch (Exception e) {
             LOGGER.error("Failed to invoke {} task: {} - uri: {}, vipAddress: {} in workflow: {}", getTaskType(), task.getTaskId(),
@@ -169,7 +169,7 @@ public class NonBlockingHttpTask extends WorkflowSystemTask {
                 } else {
                     task.setReasonForIncompletion("No response from the remote service");
                 }
-                LOGGER.info("Updating task with status {} and result {}", task.getStatus(), task.getOutputData().keySet());
+                //LOGGER.info("Updating task with status {} and result {}", task.getStatus(), task.getOutputData().keySet());
                 executor.updateTask(new TaskResult(task));
             });
 
@@ -261,7 +261,7 @@ public class NonBlockingHttpTask extends WorkflowSystemTask {
 
     @Override
     public boolean isAsync() {
-        return true;
+        return false;
     }
 
 }
