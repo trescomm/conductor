@@ -52,6 +52,7 @@ import com.netflix.conductor.core.config.ConductorProperties;
 import com.netflix.conductor.core.exception.ApplicationException;
 import com.netflix.conductor.core.exception.ApplicationException.Code;
 import com.netflix.conductor.core.exception.TerminateWorkflowException;
+import com.netflix.conductor.core.execution.tasks.InMemoryAsyncWorkflowSystemTask;
 import com.netflix.conductor.core.execution.tasks.SystemTaskRegistry;
 import com.netflix.conductor.core.execution.tasks.Terminate;
 import com.netflix.conductor.core.execution.tasks.WorkflowSystemTask;
@@ -1563,7 +1564,15 @@ public class WorkflowExecutor {
                 if (!workflowSystemTask.isAsync()) {
                     try {
                         deciderService.populateTaskData(task);
-                        workflowSystemTask.start(workflow, task, this);
+                        if(workflowSystemTask instanceof InMemoryAsyncWorkflowSystemTask) {
+                            ((InMemoryAsyncWorkflowSystemTask)workflowSystemTask).start(workflow, task, this, (Task updatedTask) -> {
+                                deciderService.externalizeTaskData(updatedTask);
+                                executionDAOFacade.updateTask(updatedTask);
+                            });
+                        } else {
+                            workflowSystemTask.start(workflow, task, this);
+                        }
+
                     } catch (Exception e) {
                         String errorMsg = String
                                 .format("Unable to start system task: %s, {id: %s, name: %s}", task.getTaskType(),
@@ -1571,8 +1580,11 @@ public class WorkflowExecutor {
                         throw new ApplicationException(ApplicationException.Code.INTERNAL_ERROR, errorMsg, e);
                     }
                     startedSystemTasks = true;
-                    deciderService.externalizeTaskData(task);
-                    executionDAOFacade.updateTask(task);
+                    if(! (workflowSystemTask instanceof InMemoryAsyncWorkflowSystemTask) ) {
+                        deciderService.externalizeTaskData(task);
+                        executionDAOFacade.updateTask(task);
+                    }
+
                 } else {
                     tasksToBeQueued.add(task);
                 }

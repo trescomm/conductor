@@ -20,6 +20,7 @@ import com.netflix.conductor.common.metadata.tasks.Task.Status;
 import com.netflix.conductor.common.metadata.tasks.TaskResult;
 import com.netflix.conductor.common.run.Workflow;
 import com.netflix.conductor.core.execution.WorkflowExecutor;
+import com.netflix.conductor.core.execution.tasks.InMemoryAsyncWorkflowSystemTask;
 import com.netflix.conductor.core.execution.tasks.WorkflowSystemTask;
 import com.netflix.conductor.core.utils.Utils;
 import org.slf4j.Logger;
@@ -42,6 +43,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import static com.netflix.conductor.common.metadata.tasks.TaskType.TASK_TYPE_HTTP;
 
@@ -49,7 +51,7 @@ import static com.netflix.conductor.common.metadata.tasks.TaskType.TASK_TYPE_HTT
  * Task that enables calling another HTTP endpoint as part of its execution
  */
 @Component(TASK_TYPE_HTTP)
-public class NonBlockingHttpTask extends WorkflowSystemTask {
+public class NonBlockingHttpTask extends WorkflowSystemTask implements InMemoryAsyncWorkflowSystemTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NonBlockingHttpTask.class);
 
@@ -81,6 +83,12 @@ public class NonBlockingHttpTask extends WorkflowSystemTask {
         this.objectMapper = objectMapper;
         this.requestParameter = REQUEST_PARAMETER_NAME;
         LOGGER.info("{} initialized...", getTaskType());
+    }
+
+    @Override
+    public void start(Workflow workflow, Task task, WorkflowExecutor workflowExecutor, Consumer<Task> onComplete) {
+        start(workflow, task, workflowExecutor);
+        onComplete.accept(task);
     }
 
     @Override
@@ -174,7 +182,6 @@ public class NonBlockingHttpTask extends WorkflowSystemTask {
             });
 
         });
-
         task.setStatus(Status.IN_PROGRESS);
     }
 
