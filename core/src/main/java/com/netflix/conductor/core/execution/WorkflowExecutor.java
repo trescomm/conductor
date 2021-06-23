@@ -18,9 +18,7 @@ import static com.netflix.conductor.common.metadata.tasks.Task.Status.FAILED_WIT
 import static com.netflix.conductor.common.metadata.tasks.Task.Status.IN_PROGRESS;
 import static com.netflix.conductor.common.metadata.tasks.Task.Status.SCHEDULED;
 import static com.netflix.conductor.common.metadata.tasks.Task.Status.SKIPPED;
-import static com.netflix.conductor.common.metadata.tasks.Task.Status.TIMED_OUT;
 import static com.netflix.conductor.common.metadata.tasks.Task.Status.valueOf;
-import static com.netflix.conductor.common.metadata.tasks.TaskType.SUB_WORKFLOW;
 import static com.netflix.conductor.common.metadata.tasks.TaskType.TASK_TYPE_JOIN;
 import static com.netflix.conductor.common.metadata.tasks.TaskType.TASK_TYPE_SUB_WORKFLOW;
 import static com.netflix.conductor.common.metadata.tasks.TaskType.TERMINATE;
@@ -52,7 +50,7 @@ import com.netflix.conductor.core.config.ConductorProperties;
 import com.netflix.conductor.core.exception.ApplicationException;
 import com.netflix.conductor.core.exception.ApplicationException.Code;
 import com.netflix.conductor.core.exception.TerminateWorkflowException;
-import com.netflix.conductor.core.execution.tasks.InMemoryAsyncWorkflowSystemTask;
+import com.netflix.conductor.core.execution.tasks.NonBlockingWorkflowSystemTask;
 import com.netflix.conductor.core.execution.tasks.SystemTaskRegistry;
 import com.netflix.conductor.core.execution.tasks.Terminate;
 import com.netflix.conductor.core.execution.tasks.WorkflowSystemTask;
@@ -76,7 +74,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -1564,8 +1561,8 @@ public class WorkflowExecutor {
                 if (!workflowSystemTask.isAsync()) {
                     try {
                         deciderService.populateTaskData(task);
-                        if(workflowSystemTask instanceof InMemoryAsyncWorkflowSystemTask) {
-                            ((InMemoryAsyncWorkflowSystemTask)workflowSystemTask).start(workflow, task, this, (Task updatedTask) -> {
+                        if(workflowSystemTask instanceof NonBlockingWorkflowSystemTask) {
+                            ((NonBlockingWorkflowSystemTask)workflowSystemTask).start(workflow, task, this, (Task updatedTask) -> {
                                 deciderService.externalizeTaskData(updatedTask);
                                 executionDAOFacade.updateTask(updatedTask);
                             });
@@ -1580,7 +1577,7 @@ public class WorkflowExecutor {
                         throw new ApplicationException(ApplicationException.Code.INTERNAL_ERROR, errorMsg, e);
                     }
                     startedSystemTasks = true;
-                    if(! (workflowSystemTask instanceof InMemoryAsyncWorkflowSystemTask) ) {
+                    if(! (workflowSystemTask instanceof NonBlockingWorkflowSystemTask) ) {
                         deciderService.externalizeTaskData(task);
                         executionDAOFacade.updateTask(task);
                     }

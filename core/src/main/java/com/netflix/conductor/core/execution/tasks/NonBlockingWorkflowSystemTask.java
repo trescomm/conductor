@@ -6,8 +6,7 @@ import com.netflix.conductor.core.execution.WorkflowExecutor;
 
 import java.util.function.Consumer;
 
-public interface InMemoryAsyncWorkflowSystemTask {
-
+public interface NonBlockingWorkflowSystemTask {
 
     void start(Workflow workflow, Task task, WorkflowExecutor workflowExecutor, Consumer<Task> onComplete);
 

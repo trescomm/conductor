@@ -15,34 +15,30 @@ package com.netflix.conductor.contribs.tasks.http;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 import com.netflix.conductor.common.metadata.tasks.Task;
 import com.netflix.conductor.common.metadata.tasks.Task.Status;
 import com.netflix.conductor.common.metadata.tasks.TaskResult;
 import com.netflix.conductor.common.run.Workflow;
+import com.netflix.conductor.contribs.tasks.http.HttpTask.HttpResponse;
+import com.netflix.conductor.contribs.tasks.http.HttpTask.Input;
 import com.netflix.conductor.core.execution.WorkflowExecutor;
-import com.netflix.conductor.core.execution.tasks.InMemoryAsyncWorkflowSystemTask;
+import com.netflix.conductor.core.execution.tasks.NonBlockingWorkflowSystemTask;
 import com.netflix.conductor.core.execution.tasks.WorkflowSystemTask;
 import com.netflix.conductor.core.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.*;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-import com.netflix.conductor.contribs.tasks.http.HttpTask.Input;
-import com.netflix.conductor.contribs.tasks.http.HttpTask.HttpResponse;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static com.netflix.conductor.common.metadata.tasks.TaskType.TASK_TYPE_HTTP;
@@ -51,7 +47,7 @@ import static com.netflix.conductor.common.metadata.tasks.TaskType.TASK_TYPE_HTT
  * Task that enables calling another HTTP endpoint as part of its execution
  */
 @Component(TASK_TYPE_HTTP)
-public class NonBlockingHttpTask extends WorkflowSystemTask implements InMemoryAsyncWorkflowSystemTask {
+public class NonBlockingHttpTask extends WorkflowSystemTask implements NonBlockingWorkflowSystemTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NonBlockingHttpTask.class);
 
@@ -65,21 +61,16 @@ public class NonBlockingHttpTask extends WorkflowSystemTask implements InMemoryA
     private final TypeReference<List<Object>> listOfObj = new TypeReference<List<Object>>() {
     };
     protected ObjectMapper objectMapper;
-    protected RestTemplateProvider restTemplateProvider;
     private final String requestParameter;
 
     @Autowired
-    public NonBlockingHttpTask(RestTemplateProvider restTemplateProvider,
-                               ObjectMapper objectMapper) {
-        this(TASK_TYPE_HTTP, restTemplateProvider, objectMapper);
+    public NonBlockingHttpTask(ObjectMapper objectMapper) {
+        this(TASK_TYPE_HTTP, objectMapper);
 
     }
 
-    public NonBlockingHttpTask(String name,
-                               RestTemplateProvider restTemplateProvider,
-                               ObjectMapper objectMapper) {
+    public NonBlockingHttpTask(String name, ObjectMapper objectMapper) {
         super(name);
-        this.restTemplateProvider = restTemplateProvider;
         this.objectMapper = objectMapper;
         this.requestParameter = REQUEST_PARAMETER_NAME;
         LOGGER.info("{} initialized...", getTaskType());
@@ -119,7 +110,6 @@ public class NonBlockingHttpTask extends WorkflowSystemTask implements InMemoryA
         try {
 
             asyncHttpCall(input, task, executor);
-            //asyncHttpCall2(input, task);
 
         } catch (Exception e) {
             LOGGER.error("Failed to invoke {} task: {} - uri: {}, vipAddress: {} in workflow: {}", getTaskType(), task.getTaskId(),
@@ -130,10 +120,28 @@ public class NonBlockingHttpTask extends WorkflowSystemTask implements InMemoryA
         }
     }
 
+    private static class ConsumerHolder {
+        private Task task;
+        private WorkflowExecutor workflowExecutor;
 
+        public ConsumerHolder(Task task, WorkflowExecutor workflowExecutor) {
+            this.task = task;
+            this.workflowExecutor = workflowExecutor;
+        }
+    }
+
+    private BiConsumer<ClientResponse, ConsumerHolder> responseConsumer = new BiConsumer<ClientResponse, ConsumerHolder>() {
+
+        @Override
+        public void accept(ClientResponse clientResponse, ConsumerHolder holder) {
+
+
+        }
+    };
+
+    @VisibleForTesting
     protected void asyncHttpCall(Input input, Task task, WorkflowExecutor executor) throws Exception {
 
-
         WebClient.RequestBodySpec client = WebClient
                 .create(input.getUri())
                 .method(input.getMethod())
@@ -147,96 +155,50 @@ public class NonBlockingHttpTask extends WorkflowSystemTask implements InMemoryA
         } else {
             cr = client.exchange();
         }
+        cr
+                .doOnError(throwable -> {
+                    task.setStatus(Status.FAILED);
+                    task.setReasonForIncompletion(throwable.getMessage());
+                    executor.updateTask(new TaskResult(task));
+                })
+                .subscribe(clientResponse -> {
 
-        cr.subscribe(clientResponse -> {
-            HttpResponse response = new HttpResponse();
-            response.headers = clientResponse.headers().asHttpHeaders();
-            response.reasonPhrase = clientResponse.statusCode().getReasonPhrase();
-            response.statusCode = clientResponse.rawStatusCode();
-            Mono<String> bodyMono = clientResponse.bodyToMono(String.class);
-            LOGGER.debug("Response: {}, task:{}", response.statusCode, task.getTaskId());
+                    HttpResponse response = new HttpResponse();
+                    response.headers = clientResponse.headers().asHttpHeaders();
+                    response.reasonPhrase = clientResponse.statusCode().getReasonPhrase();
+                    response.statusCode = clientResponse.rawStatusCode();
+                    Mono<String> bodyMono = clientResponse.bodyToMono(String.class);
+                    LOGGER.debug("Response.StatusCode: {}, task:{}", response.statusCode, task.getTaskId());
 
-            if (!clientResponse.statusCode().isError()) {
-                if (isAsyncComplete(task)) {
-                    task.setStatus(Status.IN_PROGRESS);
-                } else {
-                    task.setStatus(Status.COMPLETED);
-                }
-            } else {
-                task.setStatus(Status.FAILED);
-            }
+                    if (!clientResponse.statusCode().isError()) {
+                        if (isAsyncComplete(task)) {
+                            task.setStatus(Status.IN_PROGRESS);
+                        } else {
+                            task.setStatus(Status.COMPLETED);
+                        }
+                    } else {
+                        task.setStatus(Status.FAILED);
+                        executor.updateTask(new TaskResult(task));
+                        return;
+                    }
 
-            bodyMono.subscribe(responseBody -> {
-                response.body = extractBody(responseBody);
+                    bodyMono.subscribe(responseBody -> {
+                        response.body = extractBody(responseBody);
 
-                if (!clientResponse.statusCode().isError()) {
-                    task.getOutputData().put("response", response.asMap());
-                }
-                if (response.body != null && clientResponse.statusCode().isError()) {
-                    task.setReasonForIncompletion(response.body.toString());
-                } else {
-                    task.setReasonForIncompletion("No response from the remote service");
-                }
-                //LOGGER.info("Updating task with status {} and result {}", task.getStatus(), task.getOutputData().keySet());
-                executor.updateTask(new TaskResult(task));
-            });
+                        if (!clientResponse.statusCode().isError()) {
+                            task.getOutputData().put("response", response.asMap());
+                        }
+                        if (response.body != null && clientResponse.statusCode().isError()) {
+                            task.setReasonForIncompletion(response.body.toString());
+                        } else {
+                            task.setReasonForIncompletion("No response from the remote service");
+                        }
+                        executor.updateTask(new TaskResult(task));
+                    });
+                });
 
-        });
         task.setStatus(Status.IN_PROGRESS);
     }
-
-    protected void asyncHttpCall2(Input input, Task task) throws Exception {
-
-
-        WebClient.RequestBodySpec client = WebClient
-                .create(input.getUri())
-                .method(input.getMethod())
-                .accept(MediaType.valueOf(input.getAccept()))
-                .contentType(MediaType.valueOf(input.getContentType()));
-
-        input.headers.forEach((key, value) -> client.header(key, value.toString()));
-        Mono<ClientResponse> cr = null;
-        if (input.getBody() != null) {
-            cr = client.bodyValue(input.getBody()).exchange();
-        } else {
-            cr = client.exchange();
-        }
-
-
-
-        ClientResponse clientResponse = cr.block();
-        HttpResponse response = new HttpResponse();
-        response.headers = clientResponse.headers().asHttpHeaders();
-        response.reasonPhrase = clientResponse.statusCode().getReasonPhrase();
-        response.statusCode = clientResponse.rawStatusCode();
-        Mono<String> bodyMono = clientResponse.bodyToMono(String.class);
-
-        LOGGER.debug("Response: {}, task:{}", response.statusCode, task.getTaskId());
-
-        if (!clientResponse.statusCode().isError()) {
-            if (isAsyncComplete(task)) {
-                task.setStatus(Status.IN_PROGRESS);
-            } else {
-                task.setStatus(Status.COMPLETED);
-            }
-        } else {
-            task.setStatus(Status.FAILED);
-        }
-        String responseBody = bodyMono.block();
-        response.body = extractBody(responseBody);
-        if (!clientResponse.statusCode().isError()) {
-            task.getOutputData().put("response", response.asMap());
-        }
-        if (response.body != null && clientResponse.statusCode().isError()) {
-            task.setReasonForIncompletion(response.body.toString());
-        } else {
-            task.setReasonForIncompletion("No response from the remote service");
-        }
-
-
-        //bodyMono.block();
-    }
-
 
     private Object extractBody(String responseBody) {
         try {
