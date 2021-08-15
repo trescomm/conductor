@@ -16,7 +16,7 @@
  */
 ext {
     revActivation = '1.1.1'
-    revAmqpClient = '5.9.0'
+    revAmqpClient = '5.13.0'
     revAwaitility = '3.1.6'
     revAwsSdk = '1.11.86'
     revAzureStorageBlobSdk = '12.13.0'
@@ -28,6 +28,7 @@ ext {
     revCuratorTest = '2.4.0'
     revDynoQueues = '2.0.20'
     revElasticSearch6 = '6.8.12'
+    revElasticSearch7 = '7.6.2'
     revEmbeddedRedis = '0.6'
     revEurekaClient = '1.10.10'
     revGroovy = '2.5.13'
