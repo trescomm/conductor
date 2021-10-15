@@ -404,7 +404,8 @@ public class WorkflowExecutor {
         workflow.setVariables(workflowDefinition.getVariables());
 
         if (workflowInput != null && !workflowInput.isEmpty()) {
-            workflow.setInput(workflowInput);
+            Map<String, Object> parsedInput = parametersUtils.getWorkflowInput(workflowDefinition, workflowInput);
+            workflow.setInput(parsedInput);
             deciderService.externalizeWorkflowData(workflow);
         } else {
             workflow.setExternalInputPayloadStoragePath(externalInputPayloadStoragePath);
@@ -836,7 +837,14 @@ public class WorkflowExecutor {
             if (workflow.getWorkflowDefinition() == null) {
                 workflow = metadataMapperService.populateWorkflowWithDefinitions(workflow);
             }
-            deciderService.updateWorkflowOutput(workflow, null);
+
+            try {
+                deciderService.updateWorkflowOutput(workflow, null);
+            } catch (Exception e) {
+                // catch any failure in this step and continue the execution of terminating workflow
+                LOGGER.error("Failed to update output data for workflow: {}", workflow.getWorkflowId(), e);
+                Monitors.error(CLASS_NAME, "terminateWorkflow");
+            }
 
             // update the failed reference task names
             workflow.getFailedReferenceTaskNames().addAll(workflow.getTasks().stream()
@@ -1561,6 +1569,7 @@ public class WorkflowExecutor {
 
         // Get the workflow
         Workflow workflow = executionDAOFacade.getWorkflowById(workflowId, true);
+        updateAndPushParents(workflow, "reran");
 
         // If the task Id is null it implies that the entire workflow has to be rerun
         if (taskId == null) {
@@ -1637,7 +1646,7 @@ public class WorkflowExecutor {
             rerunFromTask.setStartTime(0);
             rerunFromTask.setUpdateTime(0);
             rerunFromTask.setEndTime(0);
-            rerunFromTask.setOutputData(null);
+            rerunFromTask.getOutputData().clear();
             rerunFromTask.setRetried(false);
             rerunFromTask.setExecuted(false);
             rerunFromTask.setExternalOutputPayloadStoragePath(null);
@@ -1646,12 +1655,19 @@ public class WorkflowExecutor {
                 rerunFromTask.setStatus(IN_PROGRESS);
                 rerunFromTask.setStartTime(System.currentTimeMillis());
             } else {
-                // Set the task to rerun as SCHEDULED
-                rerunFromTask.setStatus(SCHEDULED);
                 if (taskInput != null) {
                     rerunFromTask.setInputData(taskInput);
                 }
-                addTaskToQueue(rerunFromTask);
+                if (systemTaskRegistry.isSystemTask(rerunFromTask.getTaskType()) &&
+                        !systemTaskRegistry.get(rerunFromTask.getTaskType()).isAsync()) {
+                    // Start the synchronized system task directly
+                    deciderService.populateTaskData(rerunFromTask);
+                    systemTaskRegistry.get(rerunFromTask.getTaskType()).start(workflow, rerunFromTask, this);
+                } else {
+                    // Set the task to rerun as SCHEDULED
+                    rerunFromTask.setStatus(SCHEDULED);
+                    addTaskToQueue(rerunFromTask);
+                }
             }
             executionDAOFacade.updateTask(rerunFromTask);
 

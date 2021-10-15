@@ -15,6 +15,7 @@ package com.netflix.conductor.core.utils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.conductor.common.config.TestObjectMapperConfiguration;
+import com.netflix.conductor.common.metadata.workflow.WorkflowDef;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -174,6 +175,8 @@ public class ParametersUtilsTest {
         input.put("k1", "${$.externalId}");
         input.put("k2", "${name}");
         input.put("k3", "${version}");
+        input.put("k4", "${}");
+        input.put("k5", "${    }");
 
         Map<String, String> mapValue = new HashMap<>();
         mapValue.put("name", "${name}");
@@ -194,6 +197,8 @@ public class ParametersUtilsTest {
         assertEquals("{\"taskRefName\":\"t001\",\"workflowId\":\"w002\"}", replaced.get("k1"));
         assertEquals("conductor", replaced.get("k2"));
         assertEquals(2, replaced.get("k3"));
+        assertEquals("", replaced.get("k4"));
+        assertEquals("", replaced.get("k5"));
 
         Map replacedMap = (Map) replaced.get("map");
         assertEquals("conductor", replacedMap.get("name"));
@@ -279,5 +284,34 @@ public class ParametersUtilsTest {
         assertEquals("${someString}", inputList.get(0));
         assertEquals("${someNumber}", inputList.get(1));
         assertEquals("${someString} $${someNumber}", inputList.get(2));
+    }
+
+    @Test
+    public void getWorkflowInputHandlesNullInputTemplate () {
+        WorkflowDef workflowDef = new WorkflowDef();
+        Map<String, Object> inputParams = Map.of("key", "value");
+        Map<String, Object> workflowInput = parametersUtils.getWorkflowInput(workflowDef, inputParams);
+        assertEquals("value", workflowInput.get("key"));
+    }
+
+    @Test
+    public void getWorkflowInputFillsInTemplatedFields () {
+        WorkflowDef workflowDef = new WorkflowDef();
+        workflowDef.setInputTemplate(Map.of("other_key", "other_value"));
+        Map<String, Object> inputParams = new HashMap<>(Map.of("key", "value"));
+        Map<String, Object> workflowInput = parametersUtils.getWorkflowInput(workflowDef, inputParams);
+        assertEquals("value", workflowInput.get("key"));
+        assertEquals("other_value", workflowInput.get("other_key"));
+
+    }
+
+    @Test
+    public void getWorkflowInputPreservesExistingFieldsIfPopulated () {
+        WorkflowDef workflowDef = new WorkflowDef();
+        String keyName = "key";
+        workflowDef.setInputTemplate(Map.of(keyName, "templated_value"));
+        Map<String, Object> inputParams = new HashMap<>(Map.of(keyName, "supplied_value"));
+        Map<String, Object> workflowInput = parametersUtils.getWorkflowInput(workflowDef, inputParams);
+        assertEquals("supplied_value", workflowInput.get(keyName));
     }
 }

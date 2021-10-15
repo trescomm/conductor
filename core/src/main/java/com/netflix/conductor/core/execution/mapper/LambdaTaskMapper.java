@@ -28,11 +28,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.netflix.conductor.common.metadata.tasks.TaskType.TASK_TYPE_LAMBDA;
-
 /**
  * @author x-ultra
+ *
+ * @deprecated {@link com.netflix.conductor.core.execution.tasks.Lambda} is also deprecated.
+ * Use {@link com.netflix.conductor.core.execution.tasks.Inline} and so ${@link InlineTaskMapper} will be used as a
+ * result.
  */
+@Deprecated
 @Component
 public class LambdaTaskMapper implements TaskMapper {
 
@@ -68,7 +71,7 @@ public class LambdaTaskMapper implements TaskMapper {
                 taskDefinition);
 
         Task lambdaTask = new Task();
-        lambdaTask.setTaskType(TASK_TYPE_LAMBDA);
+        lambdaTask.setTaskType(TaskType.TASK_TYPE_LAMBDA);
         lambdaTask.setTaskDefName(taskMapperContext.getTaskToSchedule().getName());
         lambdaTask.setReferenceTaskName(taskMapperContext.getTaskToSchedule().getTaskReferenceName());
         lambdaTask.setWorkflowInstanceId(workflowInstance.getWorkflowId());

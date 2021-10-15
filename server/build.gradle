@@ -28,6 +28,7 @@ dependencies {
     implementation project(':conductor-es6-persistence')
     implementation(project(path: ':conductor-es7-persistence', configuration: 'shadow'))
     implementation project(':conductor-grpc-server')
+    implementation project(':conductor-redis-lock')
 
     implementation 'org.springframework.boot:spring-boot-starter'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -44,6 +45,8 @@ dependencies {
     runtimeOnly 'io.micrometer:micrometer-registry-datadog'
 
     runtimeOnly 'com.netflix.spectator:spectator-reg-micrometer'
+
+    runtimeOnly "org.glassfish.jaxb:jaxb-runtime:${revJAXB}"
 
     testImplementation project(':conductor-rest')
     testImplementation project(':conductor-common')
