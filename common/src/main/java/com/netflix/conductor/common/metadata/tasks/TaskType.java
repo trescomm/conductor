@@ -34,6 +34,7 @@ public enum TaskType {
     USER_DEFINED,
     HTTP,
     LAMBDA,
+    AWS_LAMBDA,
     INLINE,
     EXCLUSIVE_JOIN,
     TERMINATE,
@@ -58,6 +59,7 @@ public enum TaskType {
     public static final String TASK_TYPE_SIMPLE = "SIMPLE";
     public static final String TASK_TYPE_HTTP = "HTTP";
     public static final String TASK_TYPE_LAMBDA = "LAMBDA";
+    public static final String TASK_TYPE_AWS_LAMBDA = "AWS_LAMBDA";
     public static final String TASK_TYPE_INLINE = "INLINE";
     public static final String TASK_TYPE_EXCLUSIVE_JOIN = "EXCLUSIVE_JOIN";
     public static final String TASK_TYPE_TERMINATE = "TERMINATE";
