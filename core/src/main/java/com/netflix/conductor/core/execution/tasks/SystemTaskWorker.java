@@ -124,7 +124,7 @@ public class SystemTaskWorker extends LifecycleAwareComponent {
                 for (String taskId : polledTaskIds) {
                     if (StringUtils.isNotBlank(taskId)) {
                         LOGGER.debug("Task: {} from queue: {} being sent to the workflow executor", taskId, queueName);
-                        Monitors.recordTaskPollCount(queueName, "", 1);
+                        Monitors.recordTaskPollCount(queueName, null, 1);
 
                         executionService.ackTaskReceived(taskId);
 
