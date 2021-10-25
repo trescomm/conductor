@@ -14,6 +14,9 @@
         "com.netflix.dyno-queues:dyno-queues-redis": {
             "locked": "2.0.20"
         },
+        "com.thoughtworks.xstream:xstream": {
+            "locked": "1.4.18"
+        },
         "org.rarefiedredis.redis:redis-java": {
             "locked": "0.0.17"
         },
@@ -57,6 +60,12 @@
             ],
             "locked": "1.0.0"
         },
+        "com.google.guava:guava": {
+            "firstLevelTransitive": [
+                "com.netflix.conductor:conductor-core"
+            ],
+            "locked": "30.0-jre"
+        },
         "com.google.protobuf:protobuf-java": {
             "firstLevelTransitive": [
                 "com.netflix.conductor:conductor-common",
@@ -82,12 +91,6 @@
         "com.netflix.dyno-queues:dyno-queues-redis": {
             "locked": "2.0.20"
         },
-        "com.netflix.servo:servo-core": {
-            "firstLevelTransitive": [
-                "com.netflix.conductor:conductor-core"
-            ],
-            "locked": "0.13.0"
-        },
         "com.netflix.spectator:spectator-api": {
             "firstLevelTransitive": [
                 "com.netflix.conductor:conductor-core"
@@ -99,6 +102,9 @@
                 "com.netflix.conductor:conductor-core"
             ],
             "locked": "0.3.3"
+        },
+        "com.thoughtworks.xstream:xstream": {
+            "locked": "1.4.18"
         },
         "commons-io:commons-io": {
             "firstLevelTransitive": [
@@ -155,6 +161,9 @@
         "com.netflix.dyno-queues:dyno-queues-redis": {
             "locked": "2.0.20"
         },
+        "com.thoughtworks.xstream:xstream": {
+            "locked": "1.4.18"
+        },
         "org.rarefiedredis.redis:redis-java": {
             "locked": "0.0.17"
         },
@@ -201,6 +210,12 @@
             ],
             "locked": "1.0.0"
         },
+        "com.google.guava:guava": {
+            "firstLevelTransitive": [
+                "com.netflix.conductor:conductor-core"
+            ],
+            "locked": "30.0-jre"
+        },
         "com.google.protobuf:protobuf-java": {
             "firstLevelTransitive": [
                 "com.netflix.conductor:conductor-common",
@@ -226,12 +241,6 @@
         "com.netflix.dyno-queues:dyno-queues-redis": {
             "locked": "2.0.20"
         },
-        "com.netflix.servo:servo-core": {
-            "firstLevelTransitive": [
-                "com.netflix.conductor:conductor-core"
-            ],
-            "locked": "0.13.0"
-        },
         "com.netflix.spectator:spectator-api": {
             "firstLevelTransitive": [
                 "com.netflix.conductor:conductor-core"
@@ -243,6 +252,9 @@
                 "com.netflix.conductor:conductor-core"
             ],
             "locked": "0.3.3"
+        },
+        "com.thoughtworks.xstream:xstream": {
+            "locked": "1.4.18"
         },
         "commons-io:commons-io": {
             "firstLevelTransitive": [

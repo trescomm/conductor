@@ -124,6 +124,7 @@
         "com.google.guava:guava": {
             "firstLevelTransitive": [
                 "com.netflix.conductor:conductor-contribs",
+                "com.netflix.conductor:conductor-core",
                 "com.netflix.conductor:conductor-es6-persistence",
                 "com.netflix.conductor:conductor-mysql-persistence",
                 "com.netflix.conductor:conductor-postgres-persistence"
@@ -222,12 +223,6 @@
             ],
             "locked": "1.1.4"
         },
-        "com.netflix.servo:servo-core": {
-            "firstLevelTransitive": [
-                "com.netflix.conductor:conductor-core"
-            ],
-            "locked": "0.13.0"
-        },
         "com.netflix.spectator:spectator-api": {
             "firstLevelTransitive": [
                 "com.netflix.conductor:conductor-core"
@@ -257,6 +252,12 @@
                 "com.netflix.conductor:conductor-core"
             ],
             "locked": "0.3.3"
+        },
+        "com.thoughtworks.xstream:xstream": {
+            "firstLevelTransitive": [
+                "com.netflix.conductor:conductor-redis-persistence"
+            ],
+            "locked": "1.4.18"
         },
         "commons-io:commons-io": {
             "firstLevelTransitive": [
@@ -531,6 +532,7 @@
         "com.google.guava:guava": {
             "firstLevelTransitive": [
                 "com.netflix.conductor:conductor-contribs",
+                "com.netflix.conductor:conductor-core",
                 "com.netflix.conductor:conductor-es6-persistence",
                 "com.netflix.conductor:conductor-mysql-persistence",
                 "com.netflix.conductor:conductor-postgres-persistence"
@@ -629,12 +631,6 @@
             ],
             "locked": "1.1.4"
         },
-        "com.netflix.servo:servo-core": {
-            "firstLevelTransitive": [
-                "com.netflix.conductor:conductor-core"
-            ],
-            "locked": "0.13.0"
-        },
         "com.netflix.spectator:spectator-api": {
             "firstLevelTransitive": [
                 "com.netflix.conductor:conductor-core"
@@ -664,6 +660,12 @@
                 "com.netflix.conductor:conductor-core"
             ],
             "locked": "0.3.3"
+        },
+        "com.thoughtworks.xstream:xstream": {
+            "firstLevelTransitive": [
+                "com.netflix.conductor:conductor-redis-persistence"
+            ],
+            "locked": "1.4.18"
         },
         "commons-io:commons-io": {
             "firstLevelTransitive": [
@@ -1018,6 +1020,7 @@
         "com.google.guava:guava": {
             "firstLevelTransitive": [
                 "com.netflix.conductor:conductor-contribs",
+                "com.netflix.conductor:conductor-core",
                 "com.netflix.conductor:conductor-es6-persistence",
                 "com.netflix.conductor:conductor-mysql-persistence",
                 "com.netflix.conductor:conductor-postgres-persistence"
@@ -1116,12 +1119,6 @@
             ],
             "locked": "1.1.4"
         },
-        "com.netflix.servo:servo-core": {
-            "firstLevelTransitive": [
-                "com.netflix.conductor:conductor-core"
-            ],
-            "locked": "0.13.0"
-        },
         "com.netflix.spectator:spectator-api": {
             "firstLevelTransitive": [
                 "com.netflix.conductor:conductor-core"
@@ -1151,6 +1148,12 @@
                 "com.netflix.conductor:conductor-core"
             ],
             "locked": "0.3.3"
+        },
+        "com.thoughtworks.xstream:xstream": {
+            "firstLevelTransitive": [
+                "com.netflix.conductor:conductor-redis-persistence"
+            ],
+            "locked": "1.4.18"
         },
         "commons-io:commons-io": {
             "firstLevelTransitive": [
